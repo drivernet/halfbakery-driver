@@ -1,5 +1,5 @@
 __site_url__ = 'http://www.halfbakery.com'
-__base_url__ = 'http://www.halfbakery.com/lr/'
+__base_url__ = 'https://www.halfbakery.com/lr/'
 
 from metadrive._requests import get_drive
 
@@ -21,10 +21,10 @@ def _login(
             recreate_profile=recreate_profile,
             proxies=proxies)
 
-    drive.get('http://www.halfbakery.com/lr/')
+    drive.get(__base_url__)
 
     if drive.response.ok:
-        drive.get('http://www.halfbakery.com/lr/',
+        drive.get(__base_url__,
              params={
                  'username': username,
                  'password': password,
