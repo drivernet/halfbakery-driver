@@ -1,12 +1,9 @@
-from metatype import Dict
+import bs4
 
+from metatype import Dict
 from halfbakery import __base_url__
 
 class User(Dict):
-    @classmethod
-    def _harvest(cls, drive):
-        raise NotImplemented
-
     @classmethod
     def _filter(cls, drive, keyword=None):
         raise NotImplemented
@@ -21,17 +18,17 @@ class User(Dict):
 
 
 class Category(Dict):
-    '''
-    # https://www.halfbakery.com/lr/view/s=c:d=c:dh=1:dn=100:ds=A:n=categories:i=:t=All_20Categories
-    '''
-
-    @classmethod
-    def _harvest(cls, drive):
-        raise NotImplemented
 
     @classmethod
     def _filter(cls, drive, keyword=None):
-        raise NotImplemented
+        drive.get('https://www.halfbakery.com/lr/view/s=c:d=c:dh=1:dn=100:ds=A:n=categories:i=:t=All_20Categories')
+        soup = bs4.BeautifulSoup(drive.response.content, 'html.parser')
+        for item in soup.find_all('item'):
+            yield cls({
+                'cateogry': item.title.text,
+                '-': item.attrs.get('rdf:about'),
+                '@': drive.spec + cls.__name__
+            })
 
     @classmethod
     def _get(cls):
@@ -45,24 +42,24 @@ class Category(Dict):
 class Idea(Dict):
 
     @classmethod
-    def _harvest(cls, drive):
-        '''
-        A method to be used for periodically synchronized. Howver, how it is different from harvest?
-        # probably the best way to keep up with the new data, is to track view filtered by "last_modified",
-        '''
-        raise NotImplemented
-
-    @classmethod
     def _filter(cls,
                 drive,
                 keyword=None,
                 search='',
-                filter_type='Q'
+                filter_type='Q',
                 window_size=100,
                 window_position=0,
                 return_format=1,
-                return_properties='iocwvrqh'):
+                return_properties='iocwvrqh',
+                strategy='by_category',
+                ):
 
+        '''
+        A method to be used for periodically synchronized. Howver, how it is different from harvest?
+        # probably the best way to keep up with the new data, is to track view filtered by "last_modified",
+
+        :strategy: by_category - go through every category
+        '''
         filter_types = {
          'Q': 'modification date',
          'R': 'creation date',
@@ -139,10 +136,6 @@ class Idea(Dict):
 
 
 class Annotation(Dict):
-
-    @classmethod
-    def _harvest(cls, drive):
-        raise NotImplemented
 
     @classmethod
     def _filter(cls):
