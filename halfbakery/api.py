@@ -20,7 +20,7 @@ class User(Dict):
 class Category(Dict):
 
     @classmethod
-    def _filter(cls, drive, keyword=None):
+    def _filter(cls, drive, keyword=None, from_disk=False):
         drive.get('https://www.halfbakery.com/lr/view/s=c:d=c:dh=1:dn=100:ds=A:n=categories:i=:t=All_20Categories')
         soup = bs4.BeautifulSoup(drive.response.content, 'html.parser')
         for item in soup.find_all('item'):
@@ -105,7 +105,8 @@ class Idea(Dict):
                 base=__base_url__,
                 keyword=search or ''
             )
-            drive.get(search_url)
+            print(search_url)
+            # drive.get(search_url)
         else:
             # (view) variant B:
             filter_url = '{base}view/s={s}:d={d}:dh={dh}:dn={dn}:do={do}:ds={ds}:n={n}:i=:t='.format(
@@ -117,7 +118,8 @@ class Idea(Dict):
                 d  = return_properties or '',
                 n  = view_title or '',       # any name
             )
-            drive.get(filter_url)
+            print(filter_url)
+            # drive.get(filter_url)
 
 
     @classmethod

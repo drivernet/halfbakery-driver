@@ -44,5 +44,25 @@ def _login(
     return drive
 
 
+
 def _harvest():
-    raise NotImplemented
+    from tqdm import tqdm
+    import metadrive #noqa
+    from halfbakery.api import Category #noqa
+
+    drive = metadrive.drives.get('halfbakery:default')
+
+    for category in tqdm(Category._filter(drive=drive)):
+        category.save()
+
+    # (will also save comments, users, cause they are part of ideas)
+    # for idea in tqdm(Idea._filter(drive=drive)):
+    #     idea.save()
+
+    # :UNNECESSARY:
+    #
+    # for user in tqdm(User._filter(drive=drive)):
+    #     user.save()
+
+    # for comment in tqdm(Comment._filter(drive=drive)):
+    #     comment.save()

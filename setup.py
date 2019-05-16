@@ -4,7 +4,7 @@ setup(
     name='halfbakery',
     version='0.0.3',
     description='Halfbakery communal database controller.',
-    url='https://gitlab.com/wefindx/halfbakery',
+    url='https://gitlab.com/drivernet/halfbakery',
     author='Mindey',
     author_email='mindey@wefindx.com',
     license='ASK FOR PERMISSIONS',
