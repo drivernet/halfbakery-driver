@@ -21,8 +21,10 @@ class Category(Dict):
 
     @classmethod
     def _filter(cls, drive, keyword=None, from_disk=False):
+
         drive.get('https://www.halfbakery.com/lr/view/s=c:d=c:dh=1:dn=100:ds=A:n=categories:i=:t=All_20Categories')
         soup = bs4.BeautifulSoup(drive.response.content, 'html.parser')
+
         for item in soup.find_all('item'):
             yield cls({
                 'cateogry': item.title.text,
@@ -40,6 +42,32 @@ class Category(Dict):
 
 
 class Idea(Dict):
+
+    def _refresh(self):
+        if self.get('-') is not None:
+            url = self.get('-')
+
+            if 'www.halfbakery.com' in url and  'www.halfbakery.com/lr' not in url:
+                url = url.replace('www.halfbakery.com', 'www.halfbakery.com/lr')
+
+            self.drive.get(url)
+            soup = bs4.BeautifulSoup(self.drive.response.content, 'html.parser')
+
+            record = dict()
+
+            # record['title'] =
+            # record['subtitle'] =
+            # record['description'] =
+            # record['fishbones'] =
+            # record['croissants'] =
+            # record['annotations'] =  [Comment(), Comment()...]
+
+            self.update(record)
+
+
+    @classmethod
+    def _get(cls):
+        raise NotImplemented
 
     @classmethod
     def _filter(cls,
@@ -121,10 +149,6 @@ class Idea(Dict):
             print(filter_url)
             # drive.get(filter_url)
 
-
-    @classmethod
-    def _get(cls):
-        raise NotImplemented
 
     @classmethod
     def _create(cls):
