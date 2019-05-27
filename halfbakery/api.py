@@ -335,8 +335,52 @@ class Idea(Dict):
     def annotations(self):
         raise NotImplemented
 
-    def update_vote(self, value):
+    def create_annotation(self, value):
         raise NotImplemented
+
+    def update_vote(self, value):
+        '''
+        Changes your vote on an idea. Value can be betwee -1, 0, 1.
+        '''
+        raise NotImplemented
+
+        page = self.session.get(self.idea_url)
+        if page.ok:
+            soup = bs4.BeautifulSoup(page.content, 'html.parser')
+            sig = soup.find('input', {'name': 'sig'})
+            if sig:
+                sig = sig.attrs['value']
+            else:
+                raise Exception("Log in to vote.")
+        else:
+            raise Exception("Log in to vote.")
+
+        if value == -1:
+            self.session.get(
+                self.idea_url,
+                params={
+                    'op': 'nay',
+                    'sig': sig
+                }
+            )
+
+        if value == 0:
+            self.session.get(
+                self.idea_url,
+                params={
+                    'op': 'unvote',
+                    'sig': sig
+                }
+            )
+        if value == 1:
+            self.session.get(
+                self.idea_url,
+                params={
+                    'op': 'aye',
+                    'sig': sig
+                }
+            )
+
 
 
 class Annotation(Dict):
