@@ -7,6 +7,8 @@ from dateutil.parser import parse as dateparse
 from datetime import timezone
 
 from halfbakery import utils
+from tqdm import tqdm
+import time
 
 
 class User(Dict):
@@ -24,6 +26,10 @@ class User(Dict):
 
 
 class Category(Dict):
+
+    @classmethod
+    def _sync(cls):
+        raise NotImplemented
 
     def _refresh(self):
 
@@ -74,6 +80,30 @@ class Category(Dict):
 
 class Idea(Dict):
 
+    @classmethod
+    def _sync(cls, drive, stop='on_modification_time_match', pause=0.):
+        '''
+        Synchronizes source with local:
+            Gets the latest objects in stream, until the last object with identical modification date.
+
+        :stop_on: False / 'match' -- a condition to stop, or just get all data from source.
+        '''
+
+        for item in tqdm(cls._filter(drive=drive)):
+
+            if stop == 'on_modification_time_match':
+
+                local_modtime = item.local_modtime()
+                if local_modtime is not None:
+                    if local_modtime == item.object_modtime():
+                        break
+
+            item._refresh()
+            item.save()
+
+            time.sleep(pause)
+
+
     def _refresh(self):
         if self.get('-') is not None:
             url = self.get('-')
@@ -95,7 +125,7 @@ class Idea(Dict):
             text = self.drive.response.text.split(']<br>', 1)[1]
 
             # Body must be after that, but before the author signature.
-            record['body'] = bs4.BeautifulSoup(text.split('-- <a href=', 1)[0], 'html.parser')
+            record['body'] = bs4.BeautifulSoup(text.split('-- <a href=', 1)[0], 'html.parser').text
 
             # Author must be contained within that link.
             author_link = '<a href='+text.split('-- <a href=', 1)[1].split('</a>', 1)[0] + '</a>'
@@ -103,7 +133,7 @@ class Idea(Dict):
             record['username'] = author.text
             record['userlink'] = 'https://www.halfbakery.com' + author.attrs['href']
             # record['created_date'] = // better info in the listing of rss
-            # record['modified_date'] = // better info in the listing of rss
+            # record['updated_date'] = // better info in the listing of rss
 
             record['links'] = []
 
@@ -120,13 +150,14 @@ class Idea(Dict):
                 # link_flag_action_link = // can be constructed from known information
 
                 record['links'].append(
-                    Link({'-': link_url,
-                        'text': link_text,
-                        'username': link_username,
-                        'userlink': link_userlink,
-                        'created_date': link_created,
-                        'updated_date': link_updated}
-                    )
+                    # Link(
+                    {'-': link_url,
+                     'text': link_text,
+                     'username': link_username,
+                     'userlink': link_userlink,
+                     'created_date': link_created,
+                     'updated_date': link_updated}
+                    # )
                 )
 
             # Comments happen to be between last link, and separated by username links.
@@ -175,7 +206,6 @@ class Idea(Dict):
 
             self.update(record)
 
-
     @classmethod
     def _get(cls):
         raise NotImplemented
@@ -191,78 +221,8 @@ class Idea(Dict):
                 page_size=100,                # dn
                 return_format=1,              # ds
                 view_title='metadrive',       # n
-                strategy='by_category',
                 limit=None,
                 ):
-
-        '''
-        A method to be used for periodically synchronized. Howver, how it is different from harvest?
-        # probably the best way to keep up with the new data, is to track view filtered by "last_modified",
-
-        :strategy: by_category - go through every category
-        '''
-
-        # s =
-        filter_types = {
-         'Q': 'modification date',
-         'R': 'creation date',
-         'r': 'creation date (earliest first)',
-         'F': 'number of search matches',
-         'c': 'category',
-         'd': 'major category',
-         'o': 'author',
-         'i': 'idea name',
-         'U': 'votes',
-         'u': 'votes (worst first)',
-         'X': 'conflicting votes',
-         'E': 'your last change',
-        }
-
-        # d =
-        return_attributes = {
-         'i': 'idea title',
-         'h': 'idea subtitle',
-         'o': 'author',
-         'c': 'category',
-         'w': 'votes meal sign',
-         'v': 'votes',
-         'r': 'creation date',
-         'q': 'modification date (last anno date)',
-         'e': '??? some kind of date',
-         'j': '??? note/link',
-         'u': '??? also votes/meal sign',
-         'x': '??? some kind of numbers',
-         'y': '??? some kind of numbers',
-        }
-
-        # ds =
-        return_formats = {
-         '1': 'table',
-         'A': 'RSS 1.0',
-         '0': 'unstructured list of names',
-         '3': 'group in three columns',
-         '9': 'RSS 0.91',
-        }
-
-
-        # if search:
-        #     # (search) variant A:
-        #     search_url = '{base}?searchexpression={keyword}&ok=OK'.format(
-        #         base=__base_url__,
-        #         keyword=search or ''
-        #     )
-        # else:
-        #     # (view) variant B:
-        #     filter_url = '{base}view/s={s}:d={d}:dh={dh}:dn={dn}:do={do}:ds={ds}:n={n}:i=:t='.format(
-        #         base=__base_url__,
-        #         s  = filter_type or '',
-        #         dn = window_size or '',     # 1..N
-        #         dh = '1',
-        #         do = window_position or '', # 0..M
-        #         ds = return_format or '',
-        #         d  = return_properties or '',
-        #         n  = view_title or ''       # any name
-        #     )
 
         feed_url = 'https://www.halfbakery.com/view/s=Q:d=iocwvrqh:do={offset}:dn={page_size}:ds=A:n=halfbakery'
 
@@ -277,8 +237,7 @@ class Idea(Dict):
 
             for item in results:
 
-                ### Conform to the result to record format '::mindey/topic#halfbakery' ###
-
+                # DATA
                 url = item.attrs.get('rdf:about')
                 title = item.title.text.rsplit(' (', 1)[0]
                 subtitle = item.find('description') and item.find('description').text or None
@@ -290,13 +249,15 @@ class Idea(Dict):
                 category = item.find('dc:subject').text
                 placeholder_image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg=='
 
+                # RECORD
                 record = dict()
+                record['-'] = url
+                record['@'] = drive.spec + cls.__name__
                 record['title'] = title
                 record['subtitle'] = subtitle
                 record.update(votes)
-                # record['body'] = None
                 record['created_date'] = created_utc
-                record['modified_date'] = updated_utc
+                record['updated_date'] = updated_utc
                 record['author'] = {
                     'username': author,
                     'userlink_guess': 'https://www.halfbakery.com/user/{}'.format(
@@ -305,15 +266,7 @@ class Idea(Dict):
                 record['media'] = {'post_image': placeholder_image}
                 record['category'] = category
 
-                # Meta:
-                record['-'] = url
-                record['@'] = drive.spec + cls.__name__ # or self.__class__.__name__ in other scopes
-
-                #
-                # if get_detail=True, call the get()
-                # asynchronously in parallel.
-                #
-
+                # OBJECT
                 instance = cls(record)
                 instance.drive = drive
                 yield instance
@@ -335,8 +288,52 @@ class Idea(Dict):
     def annotations(self):
         raise NotImplemented
 
-    def update_vote(self, value):
+    def create_annotation(self, value):
         raise NotImplemented
+
+    def update_vote(self, value):
+        '''
+        Changes your vote on an idea. Value can be betwee -1, 0, 1.
+        '''
+        raise NotImplemented
+
+        page = self.session.get(self.idea_url)
+        if page.ok:
+            soup = bs4.BeautifulSoup(page.content, 'html.parser')
+            sig = soup.find('input', {'name': 'sig'})
+            if sig:
+                sig = sig.attrs['value']
+            else:
+                raise Exception("Log in to vote.")
+        else:
+            raise Exception("Log in to vote.")
+
+        if value == -1:
+            self.session.get(
+                self.idea_url,
+                params={
+                    'op': 'nay',
+                    'sig': sig
+                }
+            )
+
+        if value == 0:
+            self.session.get(
+                self.idea_url,
+                params={
+                    'op': 'unvote',
+                    'sig': sig
+                }
+            )
+        if value == 1:
+            self.session.get(
+                self.idea_url,
+                params={
+                    'op': 'aye',
+                    'sig': sig
+                }
+            )
+
 
 
 class Annotation(Dict):
