@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='halfbakery',
-    version='0.0.4',
+    version='0.0.5',
     description='Halfbakery communal database controller.',
     url='https://gitlab.com/drivernet/halfbakery',
     author='Mindey',
