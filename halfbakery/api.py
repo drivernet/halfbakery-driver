@@ -81,7 +81,7 @@ class Category(Dict):
 class Idea(Dict):
 
     @classmethod
-    def _sync(cls, drive, stop='on_modification_time_match', pause=0.):
+    def _sync(cls, drive, offset=0, stop='on_modification_time_match', pause=0.):
         '''
         Synchronizes source with local:
             Gets the latest objects in stream, until the last object with identical modification date.
@@ -89,14 +89,14 @@ class Idea(Dict):
         :stop_on: False / 'match' -- a condition to stop, or just get all data from source.
         '''
 
-        for item in tqdm(cls._filter(drive=drive)):
+        for item in tqdm(cls._filter(drive=drive, offset=offset)):
 
-            if stop == 'on_modification_time_match':
+            # if stop == 'on_modification_time_match':
 
-                local_modtime = item.local_modtime()
-                if local_modtime is not None:
-                    if local_modtime == item.object_modtime():
-                        break
+            local_modtime = item.local_modtime()
+            if local_modtime is not None:
+                if local_modtime == item.object_modtime():
+                    continue
 
             item._refresh()
             item.save()
