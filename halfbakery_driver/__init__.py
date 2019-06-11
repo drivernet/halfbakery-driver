@@ -48,9 +48,9 @@ def _login(
 def _harvest():
     from tqdm import tqdm
     import metadrive #noqa
-    from halfbakery.api import Category #noqa
+    from halfbakery_driver.api import Category #noqa
 
-    drive = metadrive.drives.get('halfbakery:default')
+    drive = metadrive.drives.get('halfbakery_driver:default')
 
     for category in tqdm(Category._filter(drive=drive)):
         category.save()

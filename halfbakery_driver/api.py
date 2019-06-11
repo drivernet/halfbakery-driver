@@ -1,12 +1,12 @@
 import bs4
 
 from metatype import Dict
-from halfbakery import __base_url__
+from halfbakery_driver import __base_url__
 
 from dateutil.parser import parse as dateparse
 from datetime import timezone
 
-from halfbakery import utils
+from halfbakery_driver import utils
 from tqdm import tqdm
 import time
 

@@ -1,13 +1,13 @@
 from setuptools import find_packages, setup
 
 setup(
-    name='halfbakery',
-    version='0.0.5',
+    name='halfbakery_driver',
+    version='0.1.0',
     description='Halfbakery communal database controller.',
-    url='https://gitlab.com/drivernet/halfbakery',
+    url='https://gitlab.com/drivernet/halfbakery-driver',
     author='Mindey',
     author_email='mindey@wefindx.com',
-    license='ASK FOR PERMISSIONS',
+    license='PUBLIC BENEFIT',
     packages = find_packages(exclude=['docs', 'tests*']),
     install_requires=['metadrive'],
     extras_require = {
