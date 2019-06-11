@@ -4,7 +4,7 @@ setup(
     name='halfbakery_driver',
     version='0.1.0',
     description='Halfbakery communal database controller.',
-    url='https://gitlab.com/drivernet/halfbakery-driver',
+    url='https://github.com/drivernet/halfbakery-driver',
     author='Mindey',
     author_email='mindey@wefindx.com',
     license='PUBLIC BENEFIT',
