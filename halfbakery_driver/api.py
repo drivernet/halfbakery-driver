@@ -1,20 +1,126 @@
+import os
 import bs4
-
+import yaml
 from metatype import Dict
 from halfbakery_driver import __base_url__
 
 from dateutil.parser import parse as dateparse
 from datetime import timezone
+import datetime
 
 from halfbakery_driver import utils
 from tqdm import tqdm
 import time
+import random
+from metadrive.config import DATA_DIR
+
+
+# list directory by file modification time
+from pathlib import Path
+listdir = lambda dirpath: [
+    str(fname) for fname in
+    sorted(Path(dirpath).iterdir(),
+    key=lambda f: f.stat().st_mtime)]
 
 
 class User(Dict):
+
+    @classmethod
+    def _sync(cls, drive, scan='last', pause=0., recency_threshold=86400, standard_deviation=1.):
+        DAYS_OLD = 10
+
+        for user in tqdm(cls._filter(drive=drive), desc='Users'):
+
+            local_modtime = user.local_modtime()
+
+            if scan == 'last':
+                local_modtime = user.local_modtime()
+                if local_modtime is not None:
+                    if (datetime.datetime.utcnow() - datetime.datetime.utcfromtimestamp(local_modtime)) < datetime.timedelta(seconds=int(DAYS_OLD*recency_threshold + standard_deviation*recency_threshold*random.random())):
+                        continue
+
+            user._refresh()
+            user.save()
+            time.sleep(pause)
+
+    def _refresh(self):
+
+        if self.get('-') is not None:
+
+            url = self['-']
+            self.drive.get(url)
+            soup = bs4.BeautifulSoup(self.drive.response.content, 'html.parser')
+
+            record = dict()
+            title = soup.find('title')
+            first_idea = soup.find('a', {'class': ['oldidea', 'newidea']})
+            random_link = soup.find('a', text='random')
+
+            if first_idea is not None:
+                bio_details = bs4.BeautifulSoup(repr(soup.find('body')).split(repr(title))[-1].split(repr(first_idea), 1)[0], 'html.parser')
+            else:
+                bio_details = bs4.BeautifulSoup(repr(soup.find('body')).split(repr(title))[-1].split(repr(random_link), 1)[0], 'html.parser')
+
+            record['username'] = title.text
+
+            record['bio'] = bio_details.text.rsplit('[', 1)[0].strip()
+            if record['bio'].startswith(record['username']):
+                record['bio'] = record['bio'][len(record['username']):]
+
+            record['ideas'] = [{
+                'title': idea.text,
+                '-': 'https://www.halfbakery.com'+idea.attrs['href'].split('#', 1)[0]}
+                for idea in soup.find_all('a', {'class': ['oldidea', 'newidea']})]
+
+            dates = bio_details.text.rsplit('[', 1)[-1].replace(']','').strip()
+
+            if ', last modified ' in dates:
+                created, updated = dates.split(', last modified ', 1)
+            else:
+                created = dates
+                updated = dates
+
+            created_utc = dateparse(created).astimezone(timezone.utc).isoformat()
+            updated_utc = dateparse(updated).astimezone(timezone.utc).isoformat()
+
+            record['user_updated_date'] = updated_utc
+            record['created_date'] = created_utc
+            record['updated_date'] = datetime.datetime.utcnow().astimezone(timezone.utc).isoformat()
+            self.update(record)
+
     @classmethod
     def _filter(cls, drive, keyword=None):
-        raise NotImplemented
+        # Go over all ideas, to capture unique user links
+
+        # Idea._sync(drive=drive)
+
+        userlinks = list()
+
+        for idea in Idea._filter(drive=drive, from_disk=True):
+
+            newlinks = set()
+
+            if idea.get('userlink'):
+                newlinks.add(idea['userlink'])
+
+            if idea.get('links') is not None:
+                for link in idea['links']:
+                    newlinks.add(link['userlink'])
+
+            if idea.get('annotations') is not None:
+                for anno in idea['annotations']:
+                    newlinks.add(anno['userlink'])
+
+            for link in newlinks:
+                if link not in userlinks:
+                    userlinks.append(link)
+                    record = {'-': link}
+                    record['@'] = drive.spec + cls.__name__
+                    instance = cls(record)
+                    instance.drive = drive
+                    yield instance
+
+        del userlinks
 
     @classmethod
     def _get(cls):
@@ -28,8 +134,27 @@ class User(Dict):
 class Category(Dict):
 
     @classmethod
-    def _sync(cls):
-        raise NotImplemented
+    def _sync(cls, drive, scan='last', pause=0., recency_threshold=86400, standard_deviation=1.):
+        '''
+        Synchronizes source with local:
+            Gets the latest objects in stream, until the last object with identical modification date.
+
+        :scan: 'last' / 'full' -- a condition to stop, or just get all data from source.
+        '''
+
+        for item in tqdm(cls._filter(drive=drive), desc='Categories'):
+
+
+            if scan == 'last':
+                local_modtime = item.local_modtime()
+                if local_modtime is not None:
+                    if (datetime.datetime.utcnow() - datetime.datetime.utcfromtimestamp(local_modtime)) < datetime.timedelta(seconds=int(recency_threshold + standard_deviation*recency_threshold*random.random())):
+                        continue
+
+            item._refresh()
+            item.save()
+            time.sleep(pause)
+
 
     def _refresh(self):
 
@@ -89,7 +214,7 @@ class Idea(Dict):
         :scan: 'last' / 'full' -- a condition to stop, or just get all data from source.
         '''
 
-        for item in tqdm(cls._filter(drive=drive, offset=offset)):
+        for item in tqdm(cls._filter(drive=drive, offset=offset), desc='Ideas'):
 
             local_modtime = item.local_modtime()
 
@@ -227,7 +352,24 @@ class Idea(Dict):
                 return_format=1,              # ds
                 view_title='metadrive',       # n
                 limit=None,
+                from_disk=False,
                 ):
+
+
+        if from_disk:
+
+            directory = os.path.join(DATA_DIR, drive.drive_id, cls.__name__)
+
+            for filename in listdir(directory):
+
+                idea = yaml.load(
+                    open(
+                        os.path.join(directory, filename)).read(), Loader=yaml.Loader)
+
+                yield cls(idea)
+
+            return
+
 
         feed_url = 'https://www.halfbakery.com/view/s=Q:d=iocwvrqh:do={offset}:dn={page_size}:ds=A:n=halfbakery'
 

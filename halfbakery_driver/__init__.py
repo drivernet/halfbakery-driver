@@ -1,6 +1,7 @@
 __site_url__ = 'http://www.halfbakery.com'
 __base_url__ = 'https://www.halfbakery.com/lr/'
 
+from tqdm import tqdm
 from metadrive._requests import get_drive
 
 
@@ -45,24 +46,21 @@ def _login(
 
 
 
-def _harvest():
-    from tqdm import tqdm
-    import metadrive #noqa
-    from halfbakery_driver.api import Category #noqa
+def _harvest(drive=None, period=60):
+    import time
 
-    drive = metadrive.drives.get('halfbakery_driver:default')
+    from halfbakery_driver.api import (
+        Idea,
+        Category,
+        User
+    )
 
-    for category in tqdm(Category._filter(drive=drive)):
-        category.save()
+    if drive is None:
+        import metadrive
+        drive = metadrive.drives.get('halfbakery-driver:default')
 
-    # (will also save comments, users, cause they are part of ideas)
-    # for idea in tqdm(Idea._filter(drive=drive)):
-    #     idea.save()
-
-    # :UNNECESSARY:
-    #
-    # for user in tqdm(User._filter(drive=drive)):
-    #     user.save()
-
-    # for comment in tqdm(Comment._filter(drive=drive)):
-    #     comment.save()
+    while True:
+        Idea._sync(drive=drive)
+        Category._sync(drive=drive)
+        User._sync(drive=drive)
+        time.sleep(period)
