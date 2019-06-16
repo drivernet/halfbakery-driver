@@ -13,6 +13,7 @@ from tqdm import tqdm
 import time
 import random
 from metadrive.config import DATA_DIR
+from metaform import List
 
 
 # list directory by file modification time
@@ -203,6 +204,36 @@ class Category(Dict):
         raise NotImplemented
 
 
+class Annotation(Dict):
+
+    @classmethod
+    def _filter(cls):
+        raise NotImplemented
+
+    @classmethod
+    def _get(cls):
+        raise NotImplemented
+
+    @classmethod
+    def _create(cls):
+        raise NotImplemented
+
+
+class Link(Dict):
+
+    @classmethod
+    def _filter(cls):
+        raise NotImplemented
+
+    @classmethod
+    def _get(cls):
+        raise NotImplemented
+
+    @classmethod
+    def _create(cls):
+        raise NotImplemented
+
+
 class Idea(Dict):
 
     @classmethod
@@ -266,6 +297,8 @@ class Idea(Dict):
             # record['updated_date'] = // better info in the listing of rss
 
             record['links'] = []
+            record['votes'] = utils.raw_votes_parse(bs4.BeautifulSoup(repr(soup).split('<nobr>', 1)[-1].split('[', 1)[0], 'html.parser').text.strip().replace('\n', ' '))
+
 
             # Links happen to be with rel: nofollow attribute:
             for link in soup.find_all('a', {'rel': 'nofollow'}):
@@ -432,19 +465,52 @@ class Idea(Dict):
     def _create(cls):
         raise NotImplemented
 
+    @property
     def annotations(self):
+
+        if not self.get('annotations'):
+            results = List([])
+        else:
+            results = List([Annotation(item)
+                for item in self['annotations']])
+
+        # setattr(results, 'create', Annotation._create)
+        return results
+
+    def add_annotation(self, value):
         raise NotImplemented
 
-    def create_annotation(self, value):
+
+    @property
+    def links(self):
+        if not self.get('links'):
+            return []
+
+        return [Link(item)
+                for item in self['links']]
+
+    def add_link(self, value):
         raise NotImplemented
 
-    def update_vote(self, value):
+    @property
+    def votes(self):
+        return self.get('votes')
+
+    def set_vote(self, value):
         '''
         Changes your vote on an idea. Value can be betwee -1, 0, 1.
         '''
-        raise NotImplemented
 
-        page = self.session.get(self.idea_url)
+        url = self.get('-')
+
+        if url is not None:
+            if 'halfbakery.com/lr/' not in url:
+                url = url.replace('halfbakery.com/', 'halfbakery.com/lr/')
+            self.drive.get(url)
+            page = self.drive.response
+        else:
+            raise Exception("Could not retrieve idea page.")
+
         if page.ok:
             soup = bs4.BeautifulSoup(page.content, 'html.parser')
             sig = soup.find('input', {'name': 'sig'})
@@ -456,8 +522,8 @@ class Idea(Dict):
             raise Exception("Log in to vote.")
 
         if value == -1:
-            self.session.get(
-                self.idea_url,
+            self.drive.get(
+                url,
                 params={
                     'op': 'nay',
                     'sig': sig
@@ -465,49 +531,21 @@ class Idea(Dict):
             )
 
         if value == 0:
-            self.session.get(
-                self.idea_url,
+            self.drive.get(
+                url,
                 params={
                     'op': 'unvote',
                     'sig': sig
                 }
             )
         if value == 1:
-            self.session.get(
-                self.idea_url,
+            self.drive.get(
+                url,
                 params={
                     'op': 'aye',
                     'sig': sig
                 }
             )
 
-
-
-class Annotation(Dict):
-
-    @classmethod
-    def _filter(cls):
-        raise NotImplemented
-
-    @classmethod
-    def _get(cls):
-        raise NotImplemented
-
-    @classmethod
-    def _create(cls):
-        raise NotImplemented
-
-
-class Link(Dict):
-
-    @classmethod
-    def _filter(cls):
-        raise NotImplemented
-
-    @classmethod
-    def _get(cls):
-        raise NotImplemented
-
-    @classmethod
-    def _create(cls):
-        raise NotImplemented
+        self._refresh()
+        self.save()
