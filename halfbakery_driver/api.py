@@ -15,6 +15,18 @@ import random
 from metadrive.config import DATA_DIR
 from metaform import List
 
+try:
+    dumper = yaml.CDumper
+    loader = yaml.CLoader
+except:
+    dumper = yaml.Dumper
+    loader = yaml.Loader
+    print('''\
+Using slower yaml.Dumper/Loader, install CDumper/CLoader to get faster results, by:
+ apt install libyaml-dev
+ pip --no-cache-dir install --verbose --force-reinstall -I pyyaml''')
+
+
 
 # list directory by file modification time
 from pathlib import Path
@@ -99,27 +111,26 @@ class User(Dict):
 
         for idea in Idea._filter(drive=drive, from_disk=True):
 
-            newlinks = set()
+            newlinks = list()
 
             if idea.get('userlink'):
-                newlinks.add(idea['userlink'])
+                newlinks.append(idea['userlink'])
 
             if idea.get('links') is not None:
                 for link in idea['links']:
-                    newlinks.add(link['userlink'])
+                    newlinks.append(link['userlink'])
 
             if idea.get('annotations') is not None:
                 for anno in idea['annotations']:
-                    newlinks.add(anno['userlink'])
+                    newlinks.append(anno['userlink'])
 
-            for link in newlinks:
-                if link not in userlinks:
-                    userlinks.append(link)
-                    record = {'-': link}
-                    record['@'] = drive.spec + cls.__name__
-                    instance = cls(record)
-                    instance.drive = drive
-                    yield instance
+            for link in (set(newlinks) - set(userlinks)):
+                userlinks.append(link)
+                record = {'-': link}
+                record['@'] = drive.spec + cls.__name__
+                instance = cls(record)
+                instance.drive = drive
+                yield instance
 
         del userlinks
 
@@ -397,7 +408,7 @@ class Idea(Dict):
 
                 idea = yaml.load(
                     open(
-                        os.path.join(directory, filename)).read(), Loader=yaml.Loader)
+                        os.path.join(directory, filename)).read(), Loader=loader)
 
                 yield cls(idea)
 
