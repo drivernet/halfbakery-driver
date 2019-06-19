@@ -93,6 +93,9 @@ class User(Dict):
                 created = dates
                 updated = dates
 
+            if len(updated) > 12:
+                updated = updated.split('\n', 1)[0]
+
             created_utc = dateparse(created).astimezone(timezone.utc).isoformat()
             updated_utc = dateparse(updated).astimezone(timezone.utc).isoformat()
 
@@ -156,14 +159,13 @@ class Category(Dict):
 
         for item in tqdm(cls._filter(drive=drive), desc='Categories'):
 
-
             if scan == 'last':
                 local_modtime = item.local_modtime()
                 if local_modtime is not None:
                     if (datetime.datetime.utcnow() - datetime.datetime.utcfromtimestamp(local_modtime)) < datetime.timedelta(seconds=int(recency_threshold + standard_deviation*recency_threshold*random.random())):
                         continue
 
-            item._refresh()
+            # item._refresh()
             item.save()
             time.sleep(pause)
 
