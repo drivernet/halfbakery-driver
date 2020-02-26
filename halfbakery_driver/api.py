@@ -316,6 +316,7 @@ class Idea(Dict):
             # Links happen to be with rel: nofollow attribute:
             for link in soup.find_all('a', {'rel': 'nofollow'}):
                 link_url = link.attrs['href']
+                link_hypertext = link.text
                 link_data = self.drive.response.text.split(repr(link), 1)[-1].split(']\n\t\t', 1)[0]
                 link_text = link_data.split('</nobr><br>', 1)[-1].split(' [<a href=/lr/user/', 1)[0]
                 link_sig = '<a href=/lr/user/'+link_data.split('[<a href=/lr/user/', 1)[-1]
@@ -328,6 +329,7 @@ class Idea(Dict):
                 record['links'].append(
                     # Link(
                     {'-': link_url,
+                     'hypertext': link_hypertext,
                      'text': link_text,
                      'username': link_username,
                      'userlink': link_userlink,
