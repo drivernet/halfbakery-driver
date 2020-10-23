@@ -307,6 +307,7 @@ class Idea(Dict):
             record['username'] = author.text
             record['userlink'] = 'https://www.halfbakery.com' + author.attrs['href']
             # record['created_date'] = // better info in the listing of rss
+            # record['created_date'] = bs4.BeautifulSoup(text.split(record['username'], 1)[1].split('<br>\n\t', 1)[0].split('\n\t\t ')[1]).text.split('random')[0]
             # record['updated_date'] = // better info in the listing of rss
 
             record['links'] = []
