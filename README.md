@@ -27,6 +27,8 @@ def get_ideas(username):
         idea._refresh()
         ideas.append(idea)
 
+    return ideas
+
 user_ideas = get_ideas('MaxwellBuchanan')
 ```
 
